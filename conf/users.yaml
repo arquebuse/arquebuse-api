@@ -1,0 +1,4 @@
+arquebuse:
+  fullName: "Arquebuse"
+  passwordHash:  "$2a$04$y0AWOd2/E5.uov506tFpGukwVDjxI0uy7lSBvviSdQoywiMLD19dS"
+  roles: ["admin"]

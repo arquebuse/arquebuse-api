@@ -1,0 +1,3 @@
+listenOn: ":8080"
+security:
+  userFile: "./conf/users.yaml"
