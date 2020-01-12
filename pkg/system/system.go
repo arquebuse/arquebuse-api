@@ -22,6 +22,7 @@ func Routes(configuration *configuration.Config) *chi.Mux {
 	router.Group(func(router chi.Router) {
 		router.Use(jwtauth.Verifier(config.Security.JWTAuth))
 		router.Use(jwtauth.Authenticator)
+		router.Get("/info", getInfo)
 		router.Get("/applications", getAllApplications)
 		router.Get("/applications/{apName}", getApplication)
 		router.Post("/applications/{apName}/start", startApplication)
@@ -29,10 +30,19 @@ func Routes(configuration *configuration.Config) *chi.Mux {
 
 	// Unprotected endpoints
 	router.Group(func(router chi.Router) {
-		router.Get("/info", getInfo)
+		router.Get("/status", getStatus)
 	})
 
 	return router
+}
+
+// Get application status (for monitoring purpose)
+func getStatus(w http.ResponseWriter, r *http.Request) {
+
+	response := make(map[string]string)
+	response["status"] = "OK"
+
+	render.JSON(w, r, response)
 }
 
 // Get hostname from os

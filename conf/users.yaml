@@ -1,4 +1,17 @@
 arquebuse:
-  fullName: "Arquebuse"
-  passwordHash:  "$2a$04$y0AWOd2/E5.uov506tFpGukwVDjxI0uy7lSBvviSdQoywiMLD19dS"
-  roles: ["admin"]
+  fullName:     "Arquebuse"
+  passwordHash: "$2a$04$y0AWOd2/E5.uov506tFpGukwVDjxI0uy7lSBvviSdQoywiMLD19dS"  # arquebuse
+  roles:        ["admin"]
+robot:
+  fullName:     "Mister Robot"
+  apiKeyHash:   "$2a$04$9XUg8pTTBy27Fcw0msdDseUOYLLWEjw54UhQ94SHjhZaBreE/pVIG"  # DFF122F7-3592-4774-9AE8-D120C43A8E1B
+  roles:        ["reader", "sender"]
+isaac:
+  fullName:     "Isaac Mercier"
+  passwordHash: "$2a$04$mHpqoqXv4VRhE3tS7a7aguNEflCwzGl2fNTBED.K9A6gfByhG3PLe"  # isaac
+  roles:        ["operator"]
+monitor:
+  fullName:     "Big Brother"
+  passwordHash: "$2a$04$zE7RTEPAzPb2FfkUjdF00.RwK8loLAvlTbzUx.YKYswFN4QPaXSri"  # monitor
+  apiKeyHash:   "$2a$04$xFW1v.06pigh3eN5WP4odulQLYFfGq2yj76w7SIXVO87afKcAkrhm"  # 77E96D23-F751-42A3-95C7-C9BE70B6CBF7
+  roles:        ["reader"]
