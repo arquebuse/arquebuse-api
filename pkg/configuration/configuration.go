@@ -31,7 +31,7 @@ func SearchFile(fileName string) string {
 		"",
 		"./",
 		"./conf/",
-		"/etc/arquebuse/",
+		"/etc/arquebuse-api/",
 	}
 
 	for _, path := range searchPaths {

@@ -12,7 +12,7 @@ var apiVersion string
 var config configuration.Config
 
 func init() {
-	configFile := flag.String("conf", "arquebuse.yaml", "Config file to load (default arquebuse.yaml.")
+	configFile := flag.String("conf", "application.yaml", "Config file to load (default application.yaml.")
 	configuration.Load(configFile, &config)
 	authentication.InitializeJWT(&config)
 	config.ApiVersion = apiVersion
