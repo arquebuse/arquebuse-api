@@ -4,6 +4,7 @@ import (
 	"flag"
 	"github.com/arquebuse/arquebuse-api/pkg/authentication"
 	"github.com/arquebuse/arquebuse-api/pkg/configuration"
+	"github.com/arquebuse/arquebuse-api/pkg/indexer"
 	"log"
 	"net/http"
 )
@@ -20,5 +21,6 @@ func init() {
 
 func main() {
 	router := Routes(&config)
+	go indexer.Start(&config)
 	log.Fatal(http.ListenAndServe(config.ListenOn, router))
 }

@@ -1,3 +1,4 @@
 listenOn: ":8080"
+dataPath: "../arquebuse-mail/data"
 security:
   userFile: "./conf/users.yaml"

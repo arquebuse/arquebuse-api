@@ -11,6 +11,7 @@ import (
 type Config struct {
 	ApiVersion string
 	ListenOn   string `yaml:"listenOn"`
+	DataPath   string `yaml:"dataPath"`
 	Security   struct {
 		UserFile string           `yaml:"userFile"`
 		JWTAuth  *jwtauth.JWTAuth `yaml:"-"`

@@ -3,6 +3,9 @@ package main
 import (
 	"github.com/arquebuse/arquebuse-api/pkg/authentication"
 	"github.com/arquebuse/arquebuse-api/pkg/configuration"
+	"github.com/arquebuse/arquebuse-api/pkg/inbound"
+	"github.com/arquebuse/arquebuse-api/pkg/outbound"
+	"github.com/arquebuse/arquebuse-api/pkg/spool"
 	"github.com/arquebuse/arquebuse-api/pkg/system"
 	"github.com/arquebuse/arquebuse-api/pkg/users"
 	"github.com/go-chi/chi"
@@ -34,6 +37,9 @@ func Routes(config *configuration.Config) *chi.Mux {
 
 	router.Route("/api", func(r chi.Router) {
 		r.Mount("/v1/authentication", authentication.Routes(config))
+		r.Mount("/v1/inbound", inbound.Routes(config))
+		r.Mount("/v1/outbound", outbound.Routes(config))
+		r.Mount("/v1/spool", spool.Routes(config))
 		r.Mount("/v1/system", system.Routes(config))
 		r.Mount("/v1/users", users.Routes(config))
 	})
