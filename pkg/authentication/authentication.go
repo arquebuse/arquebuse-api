@@ -158,6 +158,12 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 					log.Fatalf("ERROR - Unable to generate a JWT token for user '%s'. Error: %s\n", username, err.Error())
 				}
 
+				user, err := users.User(username)
+				if err != nil {
+					log.Fatalf("ERROR - Unable to get user details for user '%s'. Error: %s\n", username, err.Error())
+				}
+				response["fullName"] = user.FullName
+
 				log.Printf("Successfully authentified user '%s' with Password\n", username)
 				render.JSON(w, r, response)
 				return
@@ -183,6 +189,12 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 					if err != nil {
 						log.Fatalf("ERROR - Unable to generate a JWT token for user '%s'. Error: %s\n", username, err.Error())
 					}
+
+					user, err := users.User(username)
+					if err != nil {
+						log.Fatalf("ERROR - Unable to get user details for user '%s'. Error: %s\n", username, err.Error())
+					}
+					response["fullName"] = user.FullName
 
 					log.Printf("Successfully authentified user '%s' with API Key\n", username)
 					render.JSON(w, r, response)
@@ -213,6 +225,12 @@ func renew(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatalf("ERROR - Unable to generate a JWT token for user '%s'. Error: %s\n", username, err.Error())
 	}
+
+	user, err := users.User(username)
+	if err != nil {
+		log.Fatalf("ERROR - Unable to get user details for user '%s'. Error: %s\n", username, err.Error())
+	}
+	response["fullName"] = user.FullName
 
 	render.JSON(w, r, response)
 }
