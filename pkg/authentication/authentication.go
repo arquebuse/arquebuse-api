@@ -4,13 +4,13 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"github.com/arquebuse/arquebuse-api/pkg/common"
 	"github.com/arquebuse/arquebuse-api/pkg/configuration"
 	"github.com/arquebuse/arquebuse-api/pkg/users"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/jwtauth"
 	"github.com/go-chi/render"
-	"golang.org/x/crypto/bcrypt"
 	"log"
 	"net/http"
 	"time"
@@ -55,21 +55,6 @@ func InitializeJWT(configuration *configuration.Config) {
 	}
 
 	configuration.Security.JWTAuth = jwtauth.New("HS256", jwtKey, nil)
-}
-
-// Hash a secret with bcrypt
-func HashSecret(secret string) (string, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(secret), bcrypt.MinCost)
-	if err != nil {
-		return "", err
-	}
-
-	return string(hash), nil
-}
-
-// Compare a clear text secret and a bcrypt hashed secret
-func CompareSecretAndHash(secret string, hash string) error {
-	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(secret))
 }
 
 // Issues a JWT token for a user
@@ -117,7 +102,7 @@ func hash(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := make(map[string]string)
-	response["hash"], err = HashSecret(request.Secret)
+	response["hash"], err = common.HashSecret(request.Secret)
 
 	if err != nil {
 		log.Fatalf("ERROR - Unable to hash provided secret. Error: %s\n", err.Error())
@@ -149,7 +134,7 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 		username := request.Username
 
 		if user, exists := userList[username]; exists {
-			err = CompareSecretAndHash(request.Password, user.PasswordHash)
+			err = common.CompareSecretAndHash(request.Password, user.PasswordHash)
 
 			if err == nil {
 				response := make(map[string]string)
@@ -181,7 +166,7 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 
 		for username, userDetails := range userList {
 			if userDetails.ApiKeyHash != "" {
-				err = CompareSecretAndHash(apiKey, userDetails.ApiKeyHash)
+				err = common.CompareSecretAndHash(apiKey, userDetails.ApiKeyHash)
 
 				if err == nil {
 					response := make(map[string]string)
