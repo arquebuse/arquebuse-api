@@ -274,6 +274,8 @@ func updateOneUser(w http.ResponseWriter, r *http.Request) {
 		}
 
 		user.PasswordHash = passwordHash
+	} else {
+		user.PasswordHash = users[userToUpdate].PasswordHash
 	}
 
 	if len(request.Roles) > 0 && username != "me" {

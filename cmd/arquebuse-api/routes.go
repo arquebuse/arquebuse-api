@@ -20,7 +20,7 @@ func Routes(config *configuration.Config) *chi.Mux {
 	// Basic CORS
 	corsMiddleware := cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"}, // FIXME: replace with something less ... dangerous
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: true,

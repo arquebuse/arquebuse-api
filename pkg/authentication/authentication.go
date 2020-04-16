@@ -148,6 +148,7 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 					log.Fatalf("ERROR - Unable to get user details for user '%s'. Error: %s\n", username, err.Error())
 				}
 				response["fullName"] = user.FullName
+				response["username"] = username
 
 				log.Printf("Successfully authentified user '%s' with Password\n", username)
 				render.JSON(w, r, response)
