@@ -9,6 +9,7 @@ import (
 	"github.com/jhillyerd/enmime"
 	"log"
 	"net/http"
+	"os"
 	"path"
 	"strings"
 	"time"
@@ -49,6 +50,7 @@ func Routes(configuration *configuration.Config) *chi.Mux {
 		router.Use(jwtauth.Authenticator)
 		router.Get("/", allMails)
 		router.Get("/{id}", oneMail)
+		router.Delete("/{id}", deleteOneMail)
 	})
 
 	return router
@@ -66,7 +68,7 @@ func allMails(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, response)
 }
 
-// Return all Mail (few details)
+// Return one Mail (all details)
 func oneMail(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
@@ -115,4 +117,18 @@ func oneMail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	render.JSON(w, r, response)
+}
+
+// Delete one Mail
+func deleteOneMail(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	mailPath := path.Join(inboundPath, id+".json")
+	err := os.Remove(mailPath)
+	if err != nil {
+		log.Printf("ERROR - Unable to delete inbound item '%s'\n", id)
+		http.Error(w, "Cannot delete item", http.StatusInternalServerError)
+	} else {
+		log.Printf("Successfully deleted inbound item '%s'\n", id)
+		render.PlainText(w, r, "Item successfully deleted")
+	}
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/render"
 	"log"
 	"net/http"
+	"os"
 	"path"
 )
 
@@ -26,6 +27,7 @@ func Routes(configuration *configuration.Config) *chi.Mux {
 		router.Use(jwtauth.Authenticator)
 		router.Get("/", allMails)
 		router.Get("/{id}", oneMail)
+		router.Delete("/{id}", deleteOneMail)
 	})
 
 	return router
@@ -55,4 +57,18 @@ func oneMail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	render.JSON(w, r, response)
+}
+
+// Delete one Mail
+func deleteOneMail(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	mailPath := path.Join(outboundPath, id+".json")
+	err := os.Remove(mailPath)
+	if err != nil {
+		log.Printf("ERROR - Unable to delete outbound item '%s'\n", id)
+		http.Error(w, "Cannot delete item", http.StatusInternalServerError)
+	} else {
+		log.Printf("Successfully deleted outbound item '%s'\n", id)
+		render.PlainText(w, r, "Item successfully deleted")
+	}
 }

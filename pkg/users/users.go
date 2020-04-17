@@ -14,6 +14,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sort"
 )
 
 // User for internal usage
@@ -31,6 +32,13 @@ type PublicUser struct {
 	Roles           []string `json:"roles"`
 	Authentications []string `json:"authentications"`
 }
+
+// Sort users by Username
+type ByUsername []PublicUser
+
+func (a ByUsername) Len() int           { return len(a) }
+func (a ByUsername) Less(i, j int) bool { return a[i].Username < a[j].Username }
+func (a ByUsername) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
 var config *configuration.Config
 var users map[string]*PrivateUser
@@ -189,6 +197,7 @@ func allUsers(w http.ResponseWriter, r *http.Request) {
 		response = append(response, user)
 	}
 
+	sort.Sort(ByUsername(response))
 	render.JSON(w, r, response)
 }
 

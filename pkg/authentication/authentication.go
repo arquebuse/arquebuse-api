@@ -181,6 +181,7 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 						log.Fatalf("ERROR - Unable to get user details for user '%s'. Error: %s\n", username, err.Error())
 					}
 					response["fullName"] = user.FullName
+					response["username"] = username
 
 					log.Printf("Successfully authentified user '%s' with API Key\n", username)
 					render.JSON(w, r, response)
@@ -195,7 +196,7 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 }
 
-// Get authenticate a user based on a user/password
+// Renew a user token
 func renew(w http.ResponseWriter, r *http.Request) {
 
 	_, claims, err := jwtauth.FromContext(r.Context())
@@ -217,6 +218,7 @@ func renew(w http.ResponseWriter, r *http.Request) {
 		log.Fatalf("ERROR - Unable to get user details for user '%s'. Error: %s\n", username, err.Error())
 	}
 	response["fullName"] = user.FullName
+	response["username"] = username
 
 	render.JSON(w, r, response)
 }
