@@ -1,11 +1,11 @@
 package configuration
 
 import (
+	"github.com/arquebuse/arquebuse-api/pkg/common"
 	"github.com/go-chi/jwtauth"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
-	"os"
 )
 
 type Config struct {
@@ -16,14 +16,6 @@ type Config struct {
 		UserFile string           `yaml:"userFile"`
 		JWTAuth  *jwtauth.JWTAuth `yaml:"-"`
 	} `yaml:"security"`
-}
-
-func fileExists(filename string) bool {
-	info, err := os.Stat(filename)
-	if os.IsNotExist(err) {
-		return false
-	}
-	return !info.IsDir()
 }
 
 func SearchFile(fileName string) string {
@@ -37,7 +29,7 @@ func SearchFile(fileName string) string {
 
 	for _, path := range searchPaths {
 		currentPath := path + fileName
-		if fileExists(currentPath) {
+		if common.FileExists(currentPath) {
 			return currentPath
 		}
 	}

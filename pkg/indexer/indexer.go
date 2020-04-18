@@ -58,7 +58,12 @@ func Start(config *configuration.Config) {
 		log.Fatal(err)
 	}
 
-	defer watcher.Close()
+	defer func() {
+		cerr := watcher.Close()
+		if err == nil {
+			err = cerr
+		}
+	}()
 
 	done := make(chan bool)
 	go func() {
@@ -207,14 +212,14 @@ func removeFromIndex(folder string, id string) error {
 func LoadIndex(indexPath string) ([]Mail, error) {
 	var index []Mail
 
-	if fileExists(indexPath) {
+	if common.FileExists(indexPath) {
 
 		file, err := ioutil.ReadFile(indexPath)
 		if err != nil {
 			return index, err
 		}
 
-		err = json.Unmarshal([]byte(file), &index)
+		err = json.Unmarshal(file, &index)
 		if err != nil {
 			return index, err
 		}
@@ -248,7 +253,7 @@ func LoadMail(mailPath string) (Mail, error) {
 		return mail, err
 	}
 
-	err = json.Unmarshal([]byte(file), &mail)
+	err = json.Unmarshal(file, &mail)
 	if err != nil {
 		return mail, err
 	}
@@ -263,15 +268,6 @@ func LoadMail(mailPath string) (Mail, error) {
 	}
 
 	return mail, nil
-}
-
-// Test if a file exists
-func fileExists(filename string) bool {
-	info, err := os.Stat(filename)
-	if os.IsNotExist(err) {
-		return false
-	}
-	return !info.IsDir()
 }
 
 // Check if a string is in a slice of strings
