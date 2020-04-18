@@ -2,6 +2,7 @@ package common
 
 import (
 	"golang.org/x/crypto/bcrypt"
+	"os"
 )
 
 // Hash a secret with bcrypt
@@ -27,4 +28,13 @@ func StringInSlice(a string, list []string) bool {
 		}
 	}
 	return false
+}
+
+// Check if a folder exists
+func FolderExists(path string) bool {
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return info.IsDir()
 }

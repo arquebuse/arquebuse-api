@@ -2,6 +2,8 @@ package indexer
 
 import (
 	"encoding/json"
+	"errors"
+	"github.com/arquebuse/arquebuse-api/pkg/common"
 	"github.com/arquebuse/arquebuse-api/pkg/configuration"
 	"github.com/fsnotify/fsnotify"
 	"io/ioutil"
@@ -124,41 +126,45 @@ func refreshIndex(folder string) error {
 		log.Printf("Indexer - An error occured while loading index '%s'. Error: %s", indexPath, err.Error())
 	}
 
-	err = filepath.Walk(folder, func(filePath string, info os.FileInfo, err error) error {
-		if !info.IsDir() && !strings.Contains(filePath, "index.json") {
-			id := path.Base(filePath)
-			id = strings.TrimSuffix(id, ".json")
-			fileList = append(fileList, id)
-		}
+	if common.FolderExists(folder) {
+		err = filepath.Walk(folder, func(filePath string, info os.FileInfo, err error) error {
+			if !info.IsDir() && !strings.Contains(filePath, "index.json") {
+				id := path.Base(filePath)
+				id = strings.TrimSuffix(id, ".json")
+				fileList = append(fileList, id)
+			}
 
-		return nil
-	})
+			return nil
+		})
 
-	// remove missing mails
-	for _, mail := range index {
-		if contains(fileList, mail.ID) {
-			newIndex = append(newIndex, mail)
-		}
-		mailList = append(mailList, mail.ID)
-	}
-
-	// add new mails
-	for _, id := range fileList {
-		if !contains(mailList, id) {
-			mailPath := path.Join(folder, id+".json")
-			mail, err := LoadMail(mailPath)
-			if err == nil {
-				mail.Data = ""
+		// remove missing mails
+		for _, mail := range index {
+			if contains(fileList, mail.ID) {
 				newIndex = append(newIndex, mail)
-			} else {
-				log.Printf("Indexer - Unable to parse mail file '%s'. Error: %s\n", mailPath, err.Error())
+			}
+			mailList = append(mailList, mail.ID)
+		}
+
+		// add new mails
+		for _, id := range fileList {
+			if !contains(mailList, id) {
+				mailPath := path.Join(folder, id+".json")
+				mail, err := LoadMail(mailPath)
+				if err == nil {
+					mail.Data = ""
+					newIndex = append(newIndex, mail)
+				} else {
+					log.Printf("Indexer - Unable to parse mail file '%s'. Error: %s\n", mailPath, err.Error())
+				}
 			}
 		}
+
+		sort.Sort(ByReceived(newIndex))
+
+		return saveIndex(indexPath, &newIndex)
+	} else {
+		return errors.New("data folder doesn't exist")
 	}
-
-	sort.Sort(ByReceived(newIndex))
-
-	return saveIndex(indexPath, &newIndex)
 }
 
 // Add a new mail to index
