@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/render"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -131,7 +132,7 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 
 	// Authentication with User and Password
 	if request.Username != "" {
-		username := request.Username
+		username := strings.ToLower(request.Username)
 
 		if user, exists := userList[username]; exists {
 			err = common.CompareSecretAndHash(request.Password, user.PasswordHash)

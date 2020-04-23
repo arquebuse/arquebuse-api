@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strings"
 )
 
 // User for internal usage
@@ -203,7 +204,7 @@ func allUsers(w http.ResponseWriter, r *http.Request) {
 
 // Get all users (API)
 func oneUser(w http.ResponseWriter, r *http.Request) {
-	username := chi.URLParam(r, "username")
+	username := strings.ToLower(chi.URLParam(r, "username"))
 
 	if username == "me" {
 		_, claims, err := jwtauth.FromContext(r.Context())
@@ -227,7 +228,7 @@ func oneUser(w http.ResponseWriter, r *http.Request) {
 
 // Update a user (API)
 func updateOneUser(w http.ResponseWriter, r *http.Request) {
-	username := chi.URLParam(r, "username")
+	username := strings.ToLower(chi.URLParam(r, "username"))
 	userToUpdate := username
 
 	type Request struct {
@@ -315,7 +316,7 @@ func updateOneUser(w http.ResponseWriter, r *http.Request) {
 
 // Delete a user (API)
 func deleteOneUser(w http.ResponseWriter, r *http.Request) {
-	username := chi.URLParam(r, "username")
+	username := strings.ToLower(chi.URLParam(r, "username"))
 
 	if _, exists := users[username]; !exists {
 		log.Printf("ERROR - user '%s' not found\n", username)
@@ -382,11 +383,12 @@ func addOneUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user.PasswordHash = passwordHash
+	username := strings.ToLower(request.Username)
 
-	err = addUser(request.Username, user)
+	err = addUser(username, user)
 
 	if err == nil {
-		log.Printf("Successfully created user '%s'\n", request.Username)
+		log.Printf("Successfully created user '%s'\n", username)
 		render.PlainText(w, r, "User successfully created")
 	} else {
 		log.Printf("ERROR - Failed to create user. Error: %s\n", err.Error())
