@@ -6,6 +6,7 @@ import (
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
+	"path"
 )
 
 type Config struct {
@@ -27,8 +28,8 @@ func SearchFile(fileName string) string {
 		"/etc/arquebuse-api/",
 	}
 
-	for _, path := range searchPaths {
-		currentPath := path + fileName
+	for _, searchPath := range searchPaths {
+		currentPath := path.Join(searchPath, fileName)
 		if common.FileExists(currentPath) {
 			return currentPath
 		}
@@ -40,7 +41,7 @@ func SearchFile(fileName string) string {
 func Load(configFile *string, configuration *Config) {
 	// Default values
 	configuration.ListenOn = "127.0.0.1:8080"
-	configuration.Security.UserFile = "users.yaml"
+	configuration.DataPath = "./data"
 
 	p := SearchFile(*configFile)
 	if p != "" {
@@ -57,5 +58,10 @@ func Load(configFile *string, configuration *Config) {
 		}
 	} else {
 		log.Print("No config file found\n")
+	}
+
+	// Default values
+	if configuration.Security.UserFile == "" {
+		configuration.Security.UserFile = path.Join(configuration.DataPath, "users.yaml")
 	}
 }

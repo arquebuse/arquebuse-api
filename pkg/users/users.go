@@ -66,52 +66,75 @@ func Routes(configuration *configuration.Config) *chi.Mux {
 	return router
 }
 
+// Init user file
+func initUsers(userFile string) error {
+	passwordHash, err := common.HashSecret(`arquebuse`)
+
+	if err != nil {
+		return err
+	}
+
+	initialUser := PrivateUser{
+		PasswordHash: passwordHash,
+		FullName:     `Arquebuse`,
+		Roles:        []string{`admin`},
+	}
+
+	users = make(map[string]*PrivateUser)
+	users[`arquebuse`] = &initialUser
+
+	return saveUsers(userFile)
+}
+
 // Load users from user file
 func loadUsers(userFile string) {
 
-	p := configuration.SearchFile(userFile)
-	if p != "" {
-		c, err := ioutil.ReadFile(p)
+	if common.FileExists(userFile) {
+		c, err := ioutil.ReadFile(userFile)
 		if err != nil {
-			log.Fatalf("ERROR - Unable to read user file '%s'. Error: %s\n", p, err.Error())
+			log.Fatalf("ERROR - Unable to read user file '%s'. Error: %s\n", userFile, err.Error())
 		} else {
 			err := yaml.Unmarshal(c, &users)
 			if err != nil {
-				log.Fatalf("ERROR - Failed to parse user file '%s'. Error: %s\n", p, err.Error())
+				log.Fatalf("ERROR - Failed to parse user file '%s'. Error: %s\n", userFile, err.Error())
 			}
 		}
-	} else {
-		log.Fatalf("ERROR - No user file '%s' where found\n", userFile)
-	}
 
-	log.Printf("Successfully loaded %d user(s) from '%s'\n", len(users), p)
+		log.Printf("Successfully loaded %d user(s) from '%s'\n", len(users), userFile)
+
+	} else {
+		err := initUsers(userFile)
+
+		if err != nil {
+			log.Fatalf("ERROR - Unable to initialize user file '%s'. Error: %s\n", userFile, err.Error())
+		}
+	}
 }
 
 // Save users into user file
 func saveUsers(userFile string) error {
 
-	p := configuration.SearchFile(userFile)
-	if p != "" {
-		content, err := yaml.Marshal(&users)
-		if err != nil {
-			return err
-		}
+	content, err := yaml.Marshal(&users)
+	if err != nil {
+		return err
+	}
 
+	mode := os.FileMode(0640)
+	if common.FileExists(userFile) {
 		fileInfo, err := os.Stat(userFile)
 		if err != nil {
 			return err
 		}
 
-		err = ioutil.WriteFile(userFile, content, fileInfo.Mode())
-		if err != nil {
-			return err
-		}
-
-	} else {
-		return errors.New("no user file '" + userFile + "' where found")
+		mode = fileInfo.Mode()
 	}
 
-	log.Printf("Successfully saved %d user(s) from '%s'\n", len(users), p)
+	err = ioutil.WriteFile(userFile, content, mode)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Successfully saved %d user(s) to '%s'\n", len(users), userFile)
 	return nil
 }
 
