@@ -2,6 +2,7 @@ package system
 
 import (
 	"github.com/abrander/go-supervisord"
+	"github.com/arquebuse/arquebuse-api/api/authentication"
 	"github.com/arquebuse/arquebuse-api/pkg/configuration"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/jwtauth"
@@ -21,7 +22,7 @@ func Routes(configuration *configuration.Config) *chi.Mux {
 	// JWT protected endpoints
 	router.Group(func(router chi.Router) {
 		router.Use(jwtauth.Verifier(config.Security.JWTAuth))
-		router.Use(jwtauth.Authenticator)
+		router.Use(authentication.Authenticate)
 		router.Get("/info", getInfo)
 		router.Get("/applications", getAllApplications)
 		router.Get("/applications/{apName}", getApplication)

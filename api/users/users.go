@@ -2,29 +2,17 @@ package users
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
+	"github.com/arquebuse/arquebuse-api/api/authentication"
 	"github.com/arquebuse/arquebuse-api/pkg/common"
 	"github.com/arquebuse/arquebuse-api/pkg/configuration"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/jwtauth"
 	"github.com/go-chi/render"
-	"gopkg.in/yaml.v2"
-	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 	"sort"
 	"strings"
 )
-
-// User for internal usage
-type PrivateUser struct {
-	FullName     string   `yaml:"fullName"`
-	PasswordHash string   `yaml:"passwordHash"`
-	ApiKeyHash   string   `yaml:"apiKeyHash"`
-	Roles        []string `yaml:"roles"`
-}
 
 // User for API outputs
 type PublicUser struct {
@@ -41,21 +29,17 @@ func (a ByUsername) Len() int           { return len(a) }
 func (a ByUsername) Less(i, j int) bool { return a[i].Username < a[j].Username }
 func (a ByUsername) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
-var config *configuration.Config
-var users map[string]*PrivateUser
-
-func Routes(configuration *configuration.Config) *chi.Mux {
-	config = configuration
+func Routes(config *configuration.Config) *chi.Mux {
 
 	// Load users
-	loadUsers(config.Security.UserFile)
+	configuration.LoadUsers(config.Security.UserFile)
 
 	router := chi.NewRouter()
 
 	// JWT protected endpoints
 	router.Group(func(router chi.Router) {
 		router.Use(jwtauth.Verifier(config.Security.JWTAuth))
-		router.Use(jwtauth.Authenticator)
+		router.Use(authentication.Authenticate)
 		router.Get("/", allUsers)
 		router.Get("/{username}", oneUser)
 		router.Delete("/{username}", deleteOneUser)
@@ -66,158 +50,34 @@ func Routes(configuration *configuration.Config) *chi.Mux {
 	return router
 }
 
-// Init user file
-func initUsers(userFile string) error {
-	passwordHash, err := common.HashSecret(`arquebuse`)
-
-	if err != nil {
-		return err
+// Convert a Private user into a Public User
+func toPublicUser(username string, userDetails configuration.PrivateUser) PublicUser {
+	user := PublicUser{
+		Username:        username,
+		FullName:        userDetails.FullName,
+		Roles:           userDetails.Roles,
+		Authentications: []string{},
 	}
 
-	initialUser := PrivateUser{
-		PasswordHash: passwordHash,
-		FullName:     `Arquebuse`,
-		Roles:        []string{`admin`},
+	if userDetails.PasswordHash != "" {
+		user.Authentications = append(user.Authentications, "Password")
 	}
 
-	users = make(map[string]*PrivateUser)
-	users[`arquebuse`] = &initialUser
-
-	return saveUsers(userFile)
-}
-
-// Load users from user file
-func loadUsers(userFile string) {
-
-	if common.FileExists(userFile) {
-		c, err := ioutil.ReadFile(userFile)
-		if err != nil {
-			log.Fatalf("ERROR - Unable to read user file '%s'. Error: %s\n", userFile, err.Error())
-		} else {
-			err := yaml.Unmarshal(c, &users)
-			if err != nil {
-				log.Fatalf("ERROR - Failed to parse user file '%s'. Error: %s\n", userFile, err.Error())
-			}
-		}
-
-		log.Printf("Successfully loaded %d user(s) from '%s'\n", len(users), userFile)
-
-	} else {
-		err := initUsers(userFile)
-
-		if err != nil {
-			log.Fatalf("ERROR - Unable to initialize user file '%s'. Error: %s\n", userFile, err.Error())
-		}
-	}
-}
-
-// Save users into user file
-func saveUsers(userFile string) error {
-
-	content, err := yaml.Marshal(&users)
-	if err != nil {
-		return err
+	if userDetails.ApiKeyHash != "" {
+		user.Authentications = append(user.Authentications, "API-Key")
 	}
 
-	mode := os.FileMode(0640)
-	if common.FileExists(userFile) {
-		fileInfo, err := os.Stat(userFile)
-		if err != nil {
-			return err
-		}
-
-		mode = fileInfo.Mode()
-	}
-
-	err = ioutil.WriteFile(userFile, content, mode)
-	if err != nil {
-		return err
-	}
-
-	log.Printf("Successfully saved %d user(s) to '%s'\n", len(users), userFile)
-	return nil
-}
-
-// Get all users
-func Users() map[string]*PrivateUser {
-	return users
-}
-
-// Get a user
-func User(username string) (PublicUser, error) {
-	var authentications []string
-
-	if user, ok := users[username]; ok {
-		if user.ApiKeyHash != "" {
-			authentications = append(authentications, "API-Key")
-		}
-
-		if user.PasswordHash != "" {
-			authentications = append(authentications, "Password")
-		}
-
-		return PublicUser{
-			Username:        username,
-			FullName:        user.FullName,
-			Roles:           user.Roles,
-			Authentications: authentications,
-		}, nil
-	} else {
-		return PublicUser{}, errors.New("user not found")
-	}
-}
-
-// Update a user
-func updateUser(username string, user PrivateUser) error {
-
-	if _, ok := users[username]; ok {
-		users[username] = &user
-	} else {
-		return errors.New("user '" + username + "' does't exist")
-	}
-
-	return saveUsers(config.Security.UserFile)
-}
-
-// Add a user
-func addUser(username string, user PrivateUser) error {
-
-	if username == "" {
-		return errors.New("username cannot be empty")
-	}
-
-	if username == "me" {
-		return errors.New("'me' is a reserved username")
-	}
-
-	if _, exists := users[username]; exists {
-		return errors.New("user '" + username + "' already exists")
-	} else {
-		users[username] = &user
-	}
-
-	return saveUsers(config.Security.UserFile)
-}
-
-// Delete a user
-func deleteUser(username string) error {
-
-	if _, ok := users[username]; ok {
-		delete(users, username)
-	} else {
-		return errors.New("user '" + username + "' does't exist")
-	}
-
-	return saveUsers(config.Security.UserFile)
+	return user
 }
 
 // Get all users (API)
 func allUsers(w http.ResponseWriter, r *http.Request) {
 
 	var response []PublicUser
+	users := configuration.Users()
 
 	for username := range users {
-		user, _ := User(username)
+		user := toPublicUser(username, *users[username])
 		response = append(response, user)
 	}
 
@@ -225,25 +85,19 @@ func allUsers(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, response)
 }
 
-// Get all users (API)
+// Get one user (API)
 func oneUser(w http.ResponseWriter, r *http.Request) {
 	username := strings.ToLower(chi.URLParam(r, "username"))
 
 	if username == "me" {
-		_, claims, err := jwtauth.FromContext(r.Context())
-
-		if err != nil {
-			log.Printf("ERROR - Unable to get Claims from context. Error: %s\n", err.Error())
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		}
-
-		username = fmt.Sprintf("%v", claims["username"])
+		ctx := r.Context()
+		username = ctx.Value("username").(string)
 	}
 
-	user, err := User(username)
+	user, err := configuration.User(username)
 
 	if err == nil {
-		render.JSON(w, r, user)
+		render.JSON(w, r, toPublicUser(username, user))
 	} else {
 		http.Error(w, "User not found", http.StatusNotFound)
 	}
@@ -252,7 +106,7 @@ func oneUser(w http.ResponseWriter, r *http.Request) {
 // Update a user (API)
 func updateOneUser(w http.ResponseWriter, r *http.Request) {
 	username := strings.ToLower(chi.URLParam(r, "username"))
-	userToUpdate := username
+	user := configuration.PrivateUser{}
 
 	type Request struct {
 		Password    string   `json:"password"`
@@ -260,8 +114,6 @@ func updateOneUser(w http.ResponseWriter, r *http.Request) {
 		FullName    string   `json:"fullName"`
 		Roles       []string `json:"roles"`
 	}
-
-	user := PrivateUser{}
 
 	var request Request
 	err := json.NewDecoder(r.Body).Decode(&request)
@@ -273,14 +125,15 @@ func updateOneUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if username == "me" {
-		_, claims, err := jwtauth.FromContext(r.Context())
+		ctx := r.Context()
+		username = ctx.Value("username").(string)
+	}
 
-		if err != nil {
-			log.Printf("ERROR - Unable to get Claims from context. Error: %s\n", err.Error())
-			http.Error(w, "Failed to update user", http.StatusInternalServerError)
-		}
-
-		userToUpdate = fmt.Sprintf("%v", claims["username"])
+	userToUpdate, err := configuration.User(username)
+	if err != nil {
+		log.Printf("ERROR - user '%s' not found\n", username)
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
 	}
 
 	if request.NewPassword != "" {
@@ -291,7 +144,7 @@ func updateOneUser(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if username == "me" {
-			passwordHash := users[userToUpdate].PasswordHash
+			passwordHash := userToUpdate.PasswordHash
 			if common.CompareSecretAndHash(request.Password, passwordHash) != nil {
 				log.Printf("ERROR - Failed to update user '%s'. Bad current password\n", userToUpdate)
 				http.Error(w, "Bad current password", http.StatusBadRequest)
@@ -308,25 +161,25 @@ func updateOneUser(w http.ResponseWriter, r *http.Request) {
 
 		user.PasswordHash = passwordHash
 	} else {
-		user.PasswordHash = users[userToUpdate].PasswordHash
+		user.PasswordHash = userToUpdate.PasswordHash
 	}
 
 	if len(request.Roles) > 0 && username != "me" {
 		// FIXME: check if role is valid
 		user.Roles = request.Roles
 	} else {
-		user.Roles = users[userToUpdate].Roles
+		user.Roles = userToUpdate.Roles
 	}
 
 	if request.FullName != "" {
 		user.FullName = request.FullName
 	} else {
-		user.FullName = users[userToUpdate].FullName
+		user.FullName = userToUpdate.FullName
 	}
 
-	user.ApiKeyHash = users[userToUpdate].ApiKeyHash
+	user.ApiKeyHash = userToUpdate.ApiKeyHash
 
-	err = updateUser(userToUpdate, user)
+	err = configuration.UpdateUser(username, user)
 
 	if err == nil {
 		log.Printf("Successfully updated user '%s'\n", userToUpdate)
@@ -341,24 +194,19 @@ func updateOneUser(w http.ResponseWriter, r *http.Request) {
 func deleteOneUser(w http.ResponseWriter, r *http.Request) {
 	username := strings.ToLower(chi.URLParam(r, "username"))
 
-	if _, exists := users[username]; !exists {
+	_, err := configuration.User(username)
+
+	if err != nil {
 		log.Printf("ERROR - user '%s' not found\n", username)
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
 
-	_, claims, err := jwtauth.FromContext(r.Context())
-
-	if err != nil {
-		log.Printf("ERROR - Unable to get Claims from context. Error: %s\n", err.Error())
-		http.Error(w, "Failed to update user", http.StatusInternalServerError)
-		return
-	}
-
-	currentUsername := fmt.Sprintf("%v", claims["username"])
+	ctx := r.Context()
+	currentUsername := ctx.Value("username").(string)
 
 	if username != currentUsername {
-		err = deleteUser(username)
+		err = configuration.DeleteUser(username)
 		if err == nil {
 			log.Printf("Successfully deleted user '%s'\n", username)
 			render.PlainText(w, r, "User successfully deleted")
@@ -391,7 +239,7 @@ func addOneUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user := PrivateUser{
+	user := configuration.PrivateUser{
 		FullName: request.FullName,
 	}
 
@@ -408,7 +256,7 @@ func addOneUser(w http.ResponseWriter, r *http.Request) {
 	user.PasswordHash = passwordHash
 	username := strings.ToLower(request.Username)
 
-	err = addUser(username, user)
+	err = configuration.AddUser(username, user)
 
 	if err == nil {
 		log.Printf("Successfully created user '%s'\n", username)

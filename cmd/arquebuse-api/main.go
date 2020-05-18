@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"github.com/arquebuse/arquebuse-api/pkg/authentication"
+	"github.com/arquebuse/arquebuse-api/api/authentication"
 	"github.com/arquebuse/arquebuse-api/pkg/configuration"
 	"github.com/arquebuse/arquebuse-api/pkg/indexer"
 	"log"

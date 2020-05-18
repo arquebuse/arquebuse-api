@@ -1,13 +1,13 @@
 package main
 
 import (
-	"github.com/arquebuse/arquebuse-api/pkg/authentication"
+	"github.com/arquebuse/arquebuse-api/api/authentication"
+	"github.com/arquebuse/arquebuse-api/api/inbound"
+	"github.com/arquebuse/arquebuse-api/api/outbound"
+	"github.com/arquebuse/arquebuse-api/api/spool"
+	"github.com/arquebuse/arquebuse-api/api/system"
+	"github.com/arquebuse/arquebuse-api/api/users"
 	"github.com/arquebuse/arquebuse-api/pkg/configuration"
-	"github.com/arquebuse/arquebuse-api/pkg/inbound"
-	"github.com/arquebuse/arquebuse-api/pkg/outbound"
-	"github.com/arquebuse/arquebuse-api/pkg/spool"
-	"github.com/arquebuse/arquebuse-api/pkg/system"
-	"github.com/arquebuse/arquebuse-api/pkg/users"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
@@ -21,18 +21,19 @@ func Routes(config *configuration.Config) *chi.Mux {
 	corsMiddleware := cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"}, // FIXME: replace with something less ... dangerous
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "X-API-Key"},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: true,
 		MaxAge:           300,
 	})
-	router.Use(corsMiddleware.Handler)
 
+	// Router configuration
 	router.Use(
 		render.SetContentType(render.ContentTypeJSON), // Set content-Type headers as application/json
 		middleware.Logger,          // Log API request calls
 		middleware.RedirectSlashes, // Redirect slashes to no slash URL versions
 		middleware.Recoverer,       // Recover from panics without crashing server
+		corsMiddleware.Handler,     // Handle CORS requests
 	)
 
 	router.Route("/api", func(r chi.Router) {

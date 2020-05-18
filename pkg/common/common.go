@@ -20,8 +20,6 @@ func CompareSecretAndHash(secret string, hash string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(secret))
 }
 
-// Check if a string is in a slice
-
 // Check if a folder exists
 func FolderExists(path string) bool {
 	info, err := os.Stat(path)

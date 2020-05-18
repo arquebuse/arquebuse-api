@@ -1,6 +1,7 @@
 package outbound
 
 import (
+	"github.com/arquebuse/arquebuse-api/api/authentication"
 	"github.com/arquebuse/arquebuse-api/pkg/configuration"
 	"github.com/arquebuse/arquebuse-api/pkg/indexer"
 	"github.com/go-chi/chi"
@@ -24,7 +25,7 @@ func Routes(configuration *configuration.Config) *chi.Mux {
 	// JWT protected endpoints
 	router.Group(func(router chi.Router) {
 		router.Use(jwtauth.Verifier(config.Security.JWTAuth))
-		router.Use(jwtauth.Authenticator)
+		router.Use(authentication.Authenticate)
 		router.Get("/", allMails)
 		router.Get("/{id}", oneMail)
 		router.Delete("/{id}", deleteOneMail)
