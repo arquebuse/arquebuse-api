@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/jwtauth"
 	"github.com/go-chi/render"
+	"github.com/satori/go.uuid"
 	"log"
 	"net/http"
 	"sort"
@@ -45,6 +46,8 @@ func Routes(config *configuration.Config) *chi.Mux {
 		router.Delete("/{username}", deleteOneUser)
 		router.Patch("/{username}", updateOneUser)
 		router.Post("/", addOneUser)
+		router.Post("/{username}/api-key", addAPIKey)
+		router.Delete("/{username}/api-key", deleteAPIKey)
 	})
 
 	return router
@@ -264,5 +267,69 @@ func addOneUser(w http.ResponseWriter, r *http.Request) {
 	} else {
 		log.Printf("ERROR - Failed to create user. Error: %s\n", err.Error())
 		http.Error(w, "Failed to create user", http.StatusInternalServerError)
+	}
+}
+
+// Add an API-Key to a user (API)
+func addAPIKey(w http.ResponseWriter, r *http.Request) {
+	username := strings.ToLower(chi.URLParam(r, "username"))
+	user := configuration.PrivateUser{}
+
+	if username == "me" {
+		ctx := r.Context()
+		username = ctx.Value("username").(string)
+	}
+
+	user, err := configuration.User(username)
+	if err != nil {
+		log.Printf("ERROR - user '%s' not found\n", username)
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	uuidv4, err := uuid.NewV4()
+	if err == nil {
+		apiKey := strings.ToUpper(uuidv4.String())
+		user.ApiKeyHash, err = common.HashSecret(apiKey)
+		if err == nil {
+			err = configuration.UpdateUser(username, user)
+			if err == nil {
+				response := make(map[string]string)
+				response["API-Key"] = apiKey
+				log.Printf("Successfully added API-Key to user '%s'\n", username)
+				render.JSON(w, r, response)
+			}
+		}
+	} else {
+		log.Printf("ERROR - Unable to add API-Key to user '%s'. Error: %s\n", username, err.Error())
+		http.Error(w, "Failed to add API-Key", http.StatusInternalServerError)
+	}
+
+}
+
+// remove API-Key from a user (API)
+func deleteAPIKey(w http.ResponseWriter, r *http.Request) {
+	username := strings.ToLower(chi.URLParam(r, "username"))
+
+	if username == "me" {
+		ctx := r.Context()
+		username = ctx.Value("username").(string)
+	}
+
+	user, err := configuration.User(username)
+	if err != nil {
+		log.Printf("ERROR - user '%s' not found\n", username)
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	user.ApiKeyHash = ""
+	err = configuration.UpdateUser(username, user)
+	if err == nil {
+		log.Printf("Successfully deleted API-Key from user '%s'\n", username)
+		render.PlainText(w, r, "API-Key successfully deleted")
+	} else {
+		log.Printf("ERROR - Unable to delete API-Key from user '%s'. Error: %s\n", username, err.Error())
+		http.Error(w, "Failed to delete API-Key", http.StatusInternalServerError)
 	}
 }

@@ -55,6 +55,8 @@ func SearchFile(fileName string) string {
 
 // Load a config file
 func Load(configFile *string, configuration *Config) {
+	config = configuration
+
 	// Default values
 	configuration.ListenOn = "127.0.0.1:8080"
 	configuration.DataPath = "./data"
