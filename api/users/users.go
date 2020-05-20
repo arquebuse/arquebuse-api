@@ -17,10 +17,10 @@ import (
 
 // User for API outputs
 type PublicUser struct {
-	Username        string   `json:"username"`
-	FullName        string   `json:"fullName"`
-	Roles           []string `json:"roles"`
-	Authentications []string `json:"authentications"`
+	Username       string   `json:"username"`
+	FullName       string   `json:"fullName"`
+	Authentication string   `json:"authentication"`
+	Roles          []string `json:"roles"`
 }
 
 // Sort users by Username
@@ -47,7 +47,6 @@ func Routes(config *configuration.Config) *chi.Mux {
 		router.Patch("/{username}", updateOneUser)
 		router.Post("/", addOneUser)
 		router.Post("/{username}/api-key", addAPIKey)
-		router.Delete("/{username}/api-key", deleteAPIKey)
 	})
 
 	return router
@@ -56,18 +55,16 @@ func Routes(config *configuration.Config) *chi.Mux {
 // Convert a Private user into a Public User
 func toPublicUser(username string, userDetails configuration.PrivateUser) PublicUser {
 	user := PublicUser{
-		Username:        username,
-		FullName:        userDetails.FullName,
-		Roles:           userDetails.Roles,
-		Authentications: []string{},
+		Username:       username,
+		FullName:       userDetails.FullName,
+		Roles:          userDetails.Roles,
+		Authentication: "",
 	}
 
 	if userDetails.PasswordHash != "" {
-		user.Authentications = append(user.Authentications, "Password")
-	}
-
-	if userDetails.ApiKeyHash != "" {
-		user.Authentications = append(user.Authentications, "API-Key")
+		user.Authentication = "Password"
+	} else {
+		user.Authentication = "API-Key"
 	}
 
 	return user
@@ -163,8 +160,10 @@ func updateOneUser(w http.ResponseWriter, r *http.Request) {
 		}
 
 		user.PasswordHash = passwordHash
+		user.ApiKeyHash = ""
 	} else {
 		user.PasswordHash = userToUpdate.PasswordHash
+		user.ApiKeyHash = userToUpdate.ApiKeyHash
 	}
 
 	if len(request.Roles) > 0 && username != "me" {
@@ -180,12 +179,10 @@ func updateOneUser(w http.ResponseWriter, r *http.Request) {
 		user.FullName = userToUpdate.FullName
 	}
 
-	user.ApiKeyHash = userToUpdate.ApiKeyHash
-
 	err = configuration.UpdateUser(username, user)
 
 	if err == nil {
-		log.Printf("Successfully updated user '%s'\n", userToUpdate)
+		log.Printf("Successfully updated user '%s'\n", username)
 		render.PlainText(w, r, "User successfully modified")
 	} else {
 		log.Printf("ERROR - Unable to update user '%s'. Error: %s\n", userToUpdate, err.Error())
@@ -249,11 +246,14 @@ func addOneUser(w http.ResponseWriter, r *http.Request) {
 	// FIXME: check if roles are valid
 	user.Roles = request.Roles
 
-	passwordHash, err := common.HashSecret(request.Password)
-	if err != nil {
-		log.Printf("ERROR - Failed to hash provided password. Error: %s\n", err.Error())
-		http.Error(w, "Failed to create user", http.StatusInternalServerError)
-		return
+	passwordHash := ""
+	if request.Password != "" {
+		passwordHash, err = common.HashSecret(request.Password)
+		if err != nil {
+			log.Printf("ERROR - Failed to hash provided password. Error: %s\n", err.Error())
+			http.Error(w, "Failed to create user", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	user.PasswordHash = passwordHash
@@ -290,6 +290,7 @@ func addAPIKey(w http.ResponseWriter, r *http.Request) {
 	uuidv4, err := uuid.NewV4()
 	if err == nil {
 		apiKey := strings.ToUpper(uuidv4.String())
+		user.PasswordHash = ""
 		user.ApiKeyHash, err = common.HashSecret(apiKey)
 		if err == nil {
 			err = configuration.UpdateUser(username, user)
@@ -305,31 +306,4 @@ func addAPIKey(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to add API-Key", http.StatusInternalServerError)
 	}
 
-}
-
-// remove API-Key from a user (API)
-func deleteAPIKey(w http.ResponseWriter, r *http.Request) {
-	username := strings.ToLower(chi.URLParam(r, "username"))
-
-	if username == "me" {
-		ctx := r.Context()
-		username = ctx.Value("username").(string)
-	}
-
-	user, err := configuration.User(username)
-	if err != nil {
-		log.Printf("ERROR - user '%s' not found\n", username)
-		http.Error(w, "User not found", http.StatusNotFound)
-		return
-	}
-
-	user.ApiKeyHash = ""
-	err = configuration.UpdateUser(username, user)
-	if err == nil {
-		log.Printf("Successfully deleted API-Key from user '%s'\n", username)
-		render.PlainText(w, r, "API-Key successfully deleted")
-	} else {
-		log.Printf("ERROR - Unable to delete API-Key from user '%s'. Error: %s\n", username, err.Error())
-		http.Error(w, "Failed to delete API-Key", http.StatusInternalServerError)
-	}
 }

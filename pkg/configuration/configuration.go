@@ -118,6 +118,14 @@ func LoadUsers(userFile string) {
 			}
 		}
 
+		// Avoid user with both authentication methods
+		for username := range users {
+			if users[username].PasswordHash != "" && users[username].ApiKeyHash != "" {
+				log.Printf("WARNING - User '%s' has both Password and API-Key. Only keeping Password\n", username)
+				users[username].ApiKeyHash = ""
+			}
+		}
+
 		log.Printf("Successfully loaded %d user(s) from '%s'\n", len(users), userFile)
 
 	} else {
