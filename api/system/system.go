@@ -4,11 +4,13 @@ import (
 	"github.com/abrander/go-supervisord"
 	"github.com/arquebuse/arquebuse-api/api/authentication"
 	"github.com/arquebuse/arquebuse-api/pkg/configuration"
+	"github.com/arquebuse/arquebuse-api/pkg/version"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/jwtauth"
 	"github.com/go-chi/render"
 	"github.com/matishsiao/goInfo"
 	"net/http"
+	"runtime"
 	"strconv"
 	"strings"
 )
@@ -53,13 +55,14 @@ func getInfo(w http.ResponseWriter, r *http.Request) {
 
 	response := make(map[string]string)
 	response["hostname"] = gi.Hostname
-	response["apiVersion"] = config.ApiVersion
+	response["apiVersion"] = version.Version
+	response["gitCommit"] = version.GitCommit
+	response["buildTime"] = version.BuildTime
 	response["core"] = gi.Core
 	response["cpus"] = strconv.Itoa(gi.CPUs)
-	response["goOs"] = gi.GoOS
-	response["kernel"] = gi.Kernel
-	response["os"] = gi.OS
-	response["platform"] = gi.Platform
+	response["goVersion"] = runtime.Version()
+	response["goOs"] = runtime.GOOS
+	response["arch"] = runtime.GOARCH
 
 	render.JSON(w, r, response)
 }

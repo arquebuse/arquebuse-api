@@ -10,7 +10,7 @@ To build from sources:
 
     cd cmd/arquebuse-api
     go get
-    go build
+    go build -ldflags "-X github.com/arquebuse/arquebuse-api/pkg/version.GitCommit=$(git rev-parse --short HEAD) -X github.com/arquebuse/arquebuse-api/pkg/version.Version=snapshot -X github.com/arquebuse/arquebuse-api/pkg/version.BuildTime=$(date +%Y.%m.%d-%H:%M:%S)"
 
 # Thanks to
 
