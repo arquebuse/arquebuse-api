@@ -17,17 +17,27 @@ import (
 	"time"
 )
 
+// JWT Claim struct
 type Claims struct {
 	Username string   `json:"username"`
 	Roles    []string `json:"roles"`
 	jwt.StandardClaims
 }
 
+// Failed authentication attempts struct
+type Failed struct {
+	lastAttempt time.Time
+	failCount   int
+}
+
 var config *configuration.Config
+var failAuth map[string]*Failed
 
 func Routes(configuration *configuration.Config) *chi.Mux {
 	config = configuration
 	router := chi.NewRouter()
+
+	failAuth = map[string]*Failed{}
 
 	// JWT protected endpoints
 	router.Group(func(router chi.Router) {
@@ -44,6 +54,31 @@ func Routes(configuration *configuration.Config) *chi.Mux {
 	})
 
 	return router
+}
+
+// Lookup client IP Address in failed authentication dict and apply a delay if needed
+func checkFailed(clientIPAddress string) {
+	if failureEntry, ok := failAuth[clientIPAddress]; ok {
+		fiveMinutesAgo := time.Now().Add(time.Duration(-1) * time.Minute)
+		if fiveMinutesAgo.Before(failureEntry.lastAttempt) {
+			time.Sleep(time.Duration(failureEntry.failCount) * time.Second)
+		} else {
+			delete(failAuth, clientIPAddress)
+		}
+	}
+}
+
+// Record a failed auth attempt
+func recordFailed(clientIPAddress string) {
+	if _, ok := failAuth[clientIPAddress]; ok {
+		failAuth[clientIPAddress].failCount++
+		failAuth[clientIPAddress].lastAttempt = time.Now()
+	} else {
+		failAuth[clientIPAddress] = &Failed{
+			failCount:   1,
+			lastAttempt: time.Now(),
+		}
+	}
 }
 
 // Initialize JWT auth objects (is called before Routes() so config variable is not initialized yet)
@@ -120,6 +155,9 @@ func authenticateUAP(w http.ResponseWriter, r *http.Request) {
 		Password string `json:"password"`
 	}
 
+	// if client IP previously failed, wait a few seconds
+	checkFailed(r.RemoteAddr)
+
 	var request Request
 	err := json.NewDecoder(r.Body).Decode(&request)
 	userList := configuration.Users()
@@ -158,6 +196,7 @@ func authenticateUAP(w http.ResponseWriter, r *http.Request) {
 		log.Printf("WARN - Unknown user '%s'\n", username)
 	}
 
+	recordFailed(r.RemoteAddr)
 	http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 }
 
